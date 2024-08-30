@@ -1,3 +1,4 @@
+#include <Windows.h>
 
 void init_log() {
 	std::optional<std::filesystem::path> logpath = logger::log_directory();
@@ -58,6 +59,17 @@ static char orgText[] = "Mantella01Mantella02Mantella03Mantella04Mantella05Mante
 // Store last text written
 static char lastText[256];
 
+void CopyFuz(std::string fname) {							// Copy the generated FUZ file to the requested name
+	char exe_path[_MAX_PATH];
+
+	GetModuleFileNameA(NULL, exe_path, _MAX_PATH);			// Fallout exe
+	std::filesystem::path app_path(exe_path);
+	std::filesystem::path base_path(app_path.remove_filename());
+	base_path += "Data\\Sound\\Voice\\Mantella.esp\\MantellaVoice00";		// Path to Mantella voices directory
+	std::filesystem::path src_path(base_path / "00001ED2_1.fuz");
+	std::filesystem::path target_file(base_path / std::format("{}_1.fuz", fname));
+	CopyFile(src_path.c_str(), target_file.c_str(), false);
+	}
 
 // Patch Response text in memory for a given Topic
 int PatchTopicInfo(std::monostate, RE::TESTopic *topic , std::string new_text) {
@@ -119,6 +131,10 @@ void SetOverrideFileName_internal(RE::TESTopicInfo *Info, char * name, uint64_t 
 
 void SetOverrideFileName(std::monostate, RE::TESTopic* this_p, std::string name) {
 	RE::TESTopicInfo* tpInfo = this_p->topicInfos[0];
+
+	if (name != "00001ED2") {
+		CopyFuz(name);
+		}
 
 	logger::info("SetOverrideFileName Info: {:p} name: {}", (void*) this_p, name.data());
 	SetOverrideFileName_internal(tpInfo, name.data(), 0, 0);
