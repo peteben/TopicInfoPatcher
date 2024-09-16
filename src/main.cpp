@@ -29,14 +29,64 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface* a
 		return false;
 	}
 
-	const auto ver = a_f4se->RuntimeVersion();
-	if (ver < F4SE::RUNTIME_1_10_162) {
-		logger::critical("unsupported runtime v{}", ver.string());
-		return false;
-	}
+	//const auto ver = a_f4se->RuntimeVersion();
+	//if (ver < F4SE::RUNTIME_1_10_162 && ver != F4SE::RUNTIME_VR_1_2_72) {
+	//	logger::critical("unsupported runtime v{}", ver.string());
+	//	return false;
+	//}
 
 	return true;
 }
+
+// Functions to save and restore game settings
+// Mantella temporarily modifies some settings to mute some NPC commentary
+// During player conversation
+
+RE::GameSettingCollection *GameSettings;
+
+std::map<std::string, float> SettingsFloat;
+std::map<std::string, int> SettingsInt;
+
+bool saveFloat(std::monostate, std::string key) {
+	RE::Setting *floatsetting = GameSettings->GetSetting(key);
+	bool ret = false;
+	if (floatsetting != NULL && floatsetting->GetType() == RE::Setting::SETTING_TYPE::kFloat) {
+		SettingsFloat.insert_or_assign(key, floatsetting->GetFloat());
+		ret = true;
+		}
+	return ret;
+	}
+
+bool saveInt(std::monostate, std::string key) {
+	RE::Setting* intsetting = GameSettings->GetSetting(key);
+	bool ret = false;
+	if (intsetting != NULL && intsetting->GetType() == RE::Setting::SETTING_TYPE::kInt) {
+		SettingsInt.insert_or_assign(key, intsetting->GetInt());
+		ret = true;
+		}
+	return ret;
+	}
+
+bool restoreFloat(std::monostate, std::string key) {
+	RE::Setting* floatsetting = GameSettings->GetSetting(key);
+	bool ret = false;
+	if (SettingsFloat.contains(key) && floatsetting != NULL) {
+		floatsetting->SetFloat(SettingsFloat.at(key));
+		ret = true;
+		}
+	return ret;
+	}
+
+bool restoreInt(std::monostate, std::string key) {
+	RE::Setting* intsetting = GameSettings->GetSetting(key);
+	bool ret = false;
+	if (SettingsInt.contains(key) && intsetting != NULL) {
+		intsetting->SetInt(SettingsInt.at(key));
+		ret = true;
+		}
+	return ret;
+	}
+
 
 void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 	if (!a_msg) {
@@ -47,12 +97,25 @@ void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 
 	case F4SE::MessagingInterface::kGameDataReady: 	{
 		logger::info("GameDataReady");
+		GameSettings = RE::GameSettingCollection::GetSingleton();
 		}
 		break;
 	case F4SE::MessagingInterface::kPostLoadGame:
 		break;
 	}
 }
+
+// Substitute for SUP_F4SE's function
+bool isMenuModeActive(std::monostate) {
+	RE::UI* pUI = RE::UI::GetSingleton();
+	return pUI->GetMenuOpen("DialogueMenu")
+		|| pUI->GetMenuOpen("PipboyMenu")
+		|| pUI->GetMenuOpen("VATSMenu")
+		|| pUI->GetMenuOpen("LooksMenu")
+		|| pUI->GetMenuOpen("BarterMenu")
+		|| pUI->GetMenuOpen("WorkshopMenu")
+		|| pUI->GetMenuOpen("SimpleTextField");
+	}
 
 // This is the placeholder string we expect to find in memory before overwriting
 static char orgText[] = "Mantella01Mantella02Mantella03Mantella04Mantella05Mantella06Mantella07Mantella08Mantella09Mantella10Mantella11Mantella12Mantella13Mantella14Mantella15";
@@ -123,7 +186,7 @@ void ClearCache(std::monostate) {
 
 void SetOverrideFileName_internal(RE::TESTopicInfo *Info, char * name, uint64_t , uint64_t){
 	using func_t = decltype(SetOverrideFileName_internal);
-	static REL::Relocation<func_t> func{ REL::Offset(0x0621710)};
+	static REL::Relocation<func_t> func{ REL::VariantOffset(0x0621710, 0, 0x60C060)};	// Pre-NG, NG, VR
 
 	logger::info("Info: {:p} Name; {:p}", (void*)Info, (void*)name);
 	func(Info, name, 0, 0);
@@ -140,12 +203,48 @@ void SetOverrideFileName(std::monostate, RE::TESTopic* this_p, std::string name)
 	SetOverrideFileName_internal(tpInfo, name.data(), 0, 0);
 	}
 
+std::string StringRemoveWhiteSpace(std::monostate, std::string str) {
+	auto start = str.begin();
+	while (start != str.end() && std::isspace(*start)) {
+		start++;
+		}
+
+	auto end = str.end();
+	do {
+		end--;
+		} while (std::distance(start, end) > 0 && std::isspace(*end));
+
+	return std::string(start, end + 1);
+	}
+
+void TakeScreenShot_internal(char*filename, int filetype, int sstype) {
+	using func_t = decltype(TakeScreenShot_internal);
+	static REL::Relocation<func_t> func{ REL::ID(919230) };	
+
+	func(filename, filetype, sstype);
+
+	}
+
+void TakeScreenShot(std::monostate, std::string filename, int filetype, int sstype) {
+	TakeScreenShot_internal(filename.data(), filetype, sstype);
+	}
+
+
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* a_VM) {
 	a_VM->BindNativeMethod("TopicInfoPatcher", "PatchTopicInfo", PatchTopicInfo, true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "ClearCache", ClearCache , true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "SetOverrideFileName", SetOverrideFileName, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "StringRemoveWhiteSpace", StringRemoveWhiteSpace, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "TakeScreenShot", TakeScreenShot, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "isMenuModeActive", isMenuModeActive, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "saveFloat", saveFloat);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "saveInt", saveInt);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreFloat", restoreFloat);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreInt", restoreInt);
 	return true;
 	}
+
+
 
 
 extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface* a_f4se) {
@@ -165,3 +264,18 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface* a_f
 
 	return true;
 	}
+
+F4SE_EXPORT constinit auto F4SEPlugin_Version = []() noexcept {
+	F4SE::PluginVersionData data{};
+
+	data.PluginName(Version::PROJECT);
+	data.PluginVersion(REL::Version(0,9,4,0));
+	data.AuthorName("peteben");
+	data.UsesAddressLibrary(true);
+	data.UsesSigScanning(false);
+	data.IsLayoutDependent(true);
+	data.HasNoStructUse(false);
+	data.CompatibleVersions({ F4SE::RUNTIME_1_10_984, F4SE::RUNTIME_1_10_163, F4SE::RUNTIME_LATEST_VR });
+
+	return data;
+	}();
