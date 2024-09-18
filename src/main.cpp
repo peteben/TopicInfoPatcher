@@ -114,6 +114,7 @@ bool isMenuModeActive(std::monostate) {
 		|| pUI->GetMenuOpen("LooksMenu")
 		|| pUI->GetMenuOpen("BarterMenu")
 		|| pUI->GetMenuOpen("WorkshopMenu")
+		|| pUI->GetMenuOpen("ConsoleMenu")
 		|| pUI->GetMenuOpen("SimpleTextField");
 	}
 
