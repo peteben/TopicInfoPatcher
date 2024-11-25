@@ -38,6 +38,7 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface* a
 	return true;
 }
 
+
 // Functions to save and restore game settings
 // Mantella temporarily modifies some settings to mute some NPC commentary
 // During player conversation
@@ -87,6 +88,8 @@ bool restoreInt(std::monostate, std::string key) {
 	return ret;
 	}
 
+extern void RegisterCrosshair();
+extern std::vector<RE::Actor*> GetLastCrossHairActor(std::monostate);
 
 void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 	if (!a_msg) {
@@ -101,6 +104,7 @@ void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 		}
 		break;
 	case F4SE::MessagingInterface::kPostLoadGame:
+		RegisterCrosshair();
 		break;
 	}
 }
@@ -220,7 +224,7 @@ std::string StringRemoveWhiteSpace(std::monostate, std::string str) {
 
 void TakeScreenShot_internal(char*filename, int filetype, int sstype) {
 	using func_t = decltype(TakeScreenShot_internal);
-	static REL::Relocation<func_t> func{ REL::ID(919230) };	
+	static REL::Relocation<func_t> func{ REL::RelocationID(919230, 2229158) };
 
 	func(filename, filetype, sstype);
 
@@ -231,6 +235,7 @@ void TakeScreenShot(std::monostate, std::string filename, int filetype, int ssty
 	}
 
 
+
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* a_VM) {
 	a_VM->BindNativeMethod("TopicInfoPatcher", "PatchTopicInfo", PatchTopicInfo, true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "ClearCache", ClearCache , true);
@@ -238,10 +243,13 @@ bool RegisterFunctions(RE::BSScript::IVirtualMachine* a_VM) {
 	a_VM->BindNativeMethod("TopicInfoPatcher", "StringRemoveWhiteSpace", StringRemoveWhiteSpace, true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "TakeScreenShot", TakeScreenShot, true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "isMenuModeActive", isMenuModeActive, true);
-	a_VM->BindNativeMethod("TopicInfoPatcher", "saveFloat", saveFloat);
-	a_VM->BindNativeMethod("TopicInfoPatcher", "saveInt", saveInt);
-	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreFloat", restoreFloat);
-	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreInt", restoreInt);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "saveFloat", saveFloat, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "saveInt", saveInt, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreFloat", restoreFloat, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreInt", restoreInt, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "GetLastCrossHairActor", GetLastCrossHairActor, true);
+	//a_VM->BindNativeMethod("TopicInfoPatcher", "GetLastCrossHairRef", GetLastCrosshairRef, true);
+	//a_VM->BindNativeMethod("TopicInfoPatcher", "GetActorName", GetActorName, true);
 	return true;
 	}
 
