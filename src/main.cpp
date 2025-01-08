@@ -90,6 +90,7 @@ bool restoreInt(std::monostate, std::string key) {
 
 extern void RegisterCrosshair();
 extern std::vector<RE::Actor*> GetLastCrossHairActor(std::monostate);
+extern std::vector<float> GetLastActorCoords(std::monostate);
 
 void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 	if (!a_msg) {
@@ -118,7 +119,8 @@ bool isMenuModeActive(std::monostate) {
 		|| pUI->GetMenuOpen("LooksMenu")
 		|| pUI->GetMenuOpen("BarterMenu")
 		|| pUI->GetMenuOpen("WorkshopMenu")
-		|| pUI->GetMenuOpen("ConsoleMenu")
+		|| pUI->GetMenuOpen("Console")
+		|| pUI->GetMenuOpen("SpecialMenu")
 		|| pUI->GetMenuOpen("SimpleTextField");
 	}
 
@@ -151,7 +153,7 @@ int PatchTopicInfo(std::monostate, RE::TESTopic *topic , std::string new_text) {
 		char* resp_text = (char *) response->responseText.c_str();	// Existing response text
 
 		logger::info("Topic {:X} TopicInfo {:X} Text: {}", topic->formID, tpInfo->formID, new_text);
-		logger::info("Response Text {}", resp_text);
+		//logger::info("Response Text {}", resp_text);
 
 		if (new_text.length() > 150) {
 			ret = -2;
@@ -209,6 +211,8 @@ void SetOverrideFileName(std::monostate, RE::TESTopic* this_p, std::string name)
 	}
 
 std::string StringRemoveWhiteSpace(std::monostate, std::string str) {
+	if (str.length() == 0) return str;
+
 	auto start = str.begin();
 	while (start != str.end() && std::isspace(*start)) {
 		start++;
@@ -247,7 +251,8 @@ bool RegisterFunctions(RE::BSScript::IVirtualMachine* a_VM) {
 	a_VM->BindNativeMethod("TopicInfoPatcher", "saveInt", saveInt, true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreFloat", restoreFloat, true);
 	a_VM->BindNativeMethod("TopicInfoPatcher", "restoreInt", restoreInt, true);
-	a_VM->BindNativeMethod("TopicInfoPatcher", "GetLastCrossHairActor", GetLastCrossHairActor, true);
+	//a_VM->BindNativeMethod("TopicInfoPatcher", "GetLastCrossHairActor", GetLastCrossHairActor, true);
+	a_VM->BindNativeMethod("TopicInfoPatcher", "GetLastActorCoords", GetLastActorCoords, true);
 	//a_VM->BindNativeMethod("TopicInfoPatcher", "GetLastCrossHairRef", GetLastCrosshairRef, true);
 	//a_VM->BindNativeMethod("TopicInfoPatcher", "GetActorName", GetActorName, true);
 	return true;

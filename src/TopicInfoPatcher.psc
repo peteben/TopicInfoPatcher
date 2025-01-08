@@ -21,8 +21,9 @@ bool Function saveInt(string key) native global
 bool Function restoreFloat(string key) native global
 bool Function restoreInt(string key) native global
 
-Actor [] Function GetLastCrossHairActor() native Global
-;ObjectReference Function GetLastCrosshairRef() native global
-;String Function GetActorName() native global
+; returning Actor values from plugins is problematic at this time
+; Either some Actors return as none, or will cause the game to CTD.
+; As a workaround we just return the coords for the crosshair actor
+; And then we just use Game.FindClosestActor() to get the Actor
 
-
+Float [] Function GetLastActorCoords() native global

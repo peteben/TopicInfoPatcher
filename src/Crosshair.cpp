@@ -42,8 +42,12 @@ class CrosshairChangeHandler_MA : public RE::BSTEventSink<ViewCasterUpdateEvent_
 	virtual RE::BSEventNotifyControl ProcessEvent(const ViewCasterUpdateEvent_MA &evn, RE::BSTEventSource<ViewCasterUpdateEvent_MA>* ) override {
 		RE::NiPointer<RE::TESObjectREFR> pRef = nullptr;
 		CrosshairRefHandle = evn.value.crosshairHandler;
-		LookupREFRByHandle(CrosshairRefHandle, pRef);
-			
+
+		if (CrosshairRefHandle != 0) {
+			LookupREFRByHandle(CrosshairRefHandle, pRef);
+			}
+
+
 		if (pRef != nullptr) {
 			if (pRef->formType == RE::ENUM_FORM_ID::kACHR) {
 				RE::Actor* a = (RE::Actor*) pRef.get();
@@ -51,7 +55,6 @@ class CrosshairChangeHandler_MA : public RE::BSTEventSink<ViewCasterUpdateEvent_
 					lastActor = a;
 					}
 				}
-
 			}
 		return RE::BSEventNotifyControl::kContinue;
 		}
@@ -62,7 +65,7 @@ class CrosshairChangeHandler_MA : public RE::BSTEventSink<ViewCasterUpdateEvent_
 
 		EventSource* e = (EventSource*)*pt;
 
-		logger::info("g_source: pt: {:p} *pt = {:X} e: {:p} ",  (void*) pt, *pt, (void*) e);
+		//logger::info("g_source: pt: {:p} *pt = {:X} e: {:p} ",  (void*) pt, *pt, (void*) e);
 
 		e->RegisterSink(pCrosshairHandler);
 		CrosshairRefHandle = 0;
@@ -75,12 +78,35 @@ void RegisterCrosshair() {
 	CrosshairChangeHandler_MA::Register();
 	}
 
-std::vector<RE::Actor*> GetLastCrossHairActor(std::monostate) {
-	std::vector<RE::Actor*> result;
+/*
+* Unfortunately, returning Actor values sometimes doesn't work with Fallout4 NG (1.10.984.0)
+* We instead return the X,Y,Z coordinates of the NPC and call Find.ClosestActor() in the Papyrus script
+*/
+
+std::vector<float> GetLastActorCoords(std::monostate) {
+	std::vector<float> result;
 
 	if (lastActor) {
-		result.push_back(lastActor);
-		}
+		float X = lastActor->GetPositionX();
+		float Y = lastActor->GetPositionY();
+		float Z = lastActor->GetPositionZ();
 
+		//logger::info("GetLastCrosshairActor {} X:{:f} Y:{:f} Z:{:f}", lastActor->GetDisplayFullName(), X,Y, Z);
+		
+		result.push_back(X);
+		result.push_back(Y);
+		result.push_back(Z);
+		}
 	return result;
 	}
+
+//std::vector<RE::Actor*> GetLastCrossHairActor(std::monostate) {
+//	std::vector<RE::Actor*> result;
+//
+//	if (lastActor) {
+//		logger::info("GetLastCrosshairActor {}", lastActor->GetDisplayFullName());
+//		result.push_back(lastActor);
+//		}
+//	logger::info("Returning from GetLastCrossHairActor");
+//	return result;
+//	}
