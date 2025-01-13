@@ -1,5 +1,7 @@
 #include <Windows.h>
 
+bool isVR;
+
 void init_log() {
 	std::optional<std::filesystem::path> logpath = logger::log_directory();
 
@@ -28,6 +30,8 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface* a
 		logger::critical("loaded in editor");
 		return false;
 	}
+
+	isVR = (a_f4se->RuntimeVersion() == F4SE::RUNTIME_LATEST_VR);
 
 	//const auto ver = a_f4se->RuntimeVersion();
 	//if (ver < F4SE::RUNTIME_1_10_162 && ver != F4SE::RUNTIME_VR_1_2_72) {
@@ -105,7 +109,10 @@ void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 		}
 		break;
 	case F4SE::MessagingInterface::kPostLoadGame:
-		RegisterCrosshair();
+	case F4SE::MessagingInterface::kNewGame:
+		if (!isVR) {
+			RegisterCrosshair();
+			}
 		break;
 	}
 }
