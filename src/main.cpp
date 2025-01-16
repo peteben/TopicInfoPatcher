@@ -26,12 +26,11 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface* a
 	a_info->name = Version::PROJECT.data();
 	a_info->version = Version::MAJOR;
 
+	
 	if (a_f4se->IsEditor()) {
 		logger::critical("loaded in editor");
 		return false;
 	}
-
-	isVR = (a_f4se->RuntimeVersion() == F4SE::RUNTIME_LATEST_VR);
 
 	//const auto ver = a_f4se->RuntimeVersion();
 	//if (ver < F4SE::RUNTIME_1_10_162 && ver != F4SE::RUNTIME_VR_1_2_72) {
@@ -53,41 +52,49 @@ std::map<std::string, float> SettingsFloat;
 std::map<std::string, int> SettingsInt;
 
 bool saveFloat(std::monostate, std::string key) {
-	RE::Setting *floatsetting = GameSettings->GetSetting(key);
 	bool ret = false;
-	if (floatsetting != NULL && floatsetting->GetType() == RE::Setting::SETTING_TYPE::kFloat) {
-		SettingsFloat.insert_or_assign(key, floatsetting->GetFloat());
-		ret = true;
+	if (GameSettings) {
+		RE::Setting* floatsetting = GameSettings->GetSetting(key);
+		if (floatsetting != NULL && floatsetting->GetType() == RE::Setting::SETTING_TYPE::kFloat) {
+			SettingsFloat.insert_or_assign(key, floatsetting->GetFloat());
+			ret = true;
+			}
 		}
 	return ret;
 	}
 
 bool saveInt(std::monostate, std::string key) {
-	RE::Setting* intsetting = GameSettings->GetSetting(key);
 	bool ret = false;
-	if (intsetting != NULL && intsetting->GetType() == RE::Setting::SETTING_TYPE::kInt) {
-		SettingsInt.insert_or_assign(key, intsetting->GetInt());
-		ret = true;
+	if (GameSettings) {
+		RE::Setting* intsetting = GameSettings->GetSetting(key);
+		if (intsetting != NULL && intsetting->GetType() == RE::Setting::SETTING_TYPE::kInt) {
+			SettingsInt.insert_or_assign(key, intsetting->GetInt());
+			ret = true;
+			}
 		}
 	return ret;
 	}
 
 bool restoreFloat(std::monostate, std::string key) {
-	RE::Setting* floatsetting = GameSettings->GetSetting(key);
 	bool ret = false;
-	if (SettingsFloat.contains(key) && floatsetting != NULL) {
-		floatsetting->SetFloat(SettingsFloat.at(key));
-		ret = true;
+	if (GameSettings) {
+		RE::Setting* floatsetting = GameSettings->GetSetting(key);
+		if (SettingsFloat.contains(key) && floatsetting != NULL) {
+			floatsetting->SetFloat(SettingsFloat.at(key));
+			ret = true;
+			}
 		}
 	return ret;
 	}
 
 bool restoreInt(std::monostate, std::string key) {
-	RE::Setting* intsetting = GameSettings->GetSetting(key);
 	bool ret = false;
-	if (SettingsInt.contains(key) && intsetting != NULL) {
-		intsetting->SetInt(SettingsInt.at(key));
-		ret = true;
+	if (GameSettings) {
+		RE::Setting* intsetting = GameSettings->GetSetting(key);
+		if (SettingsInt.contains(key) && intsetting != NULL) {
+			intsetting->SetInt(SettingsInt.at(key));
+			ret = true;
+			}
 		}
 	return ret;
 	}
@@ -110,7 +117,7 @@ void MessageHandler(F4SE::MessagingInterface::Message* a_msg) {
 		break;
 	case F4SE::MessagingInterface::kPostLoadGame:
 	case F4SE::MessagingInterface::kNewGame:
-		if (!isVR) {
+		if (!REL::Module::IsVR()) {
 			RegisterCrosshair();
 			}
 		break;
@@ -272,6 +279,20 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface* a_f
 	F4SE::Init(a_f4se,false);
 
 	init_log();
+
+	if (REL::Module::IsVR()) {
+		logger::info("is VR");
+		REL::Version F4SEver = a_f4se->F4SEVersion();
+		logger::info("F4SE Version is: {:d}.{:d}.{:d}.{:d}", F4SEver.major(), F4SEver.minor(), F4SEver.build(), F4SEver.patch());
+		if (F4SEver < REL::Version(0, 6, 21, 0)) {
+			MessageBox(NULL, L"Please update to F4SEVR Version 0.6.21.", L"Newer version of F4SEVR required!", 0);
+			ExitProcess(02);
+			}
+		}
+	else {
+		logger::info("Not VR");
+		}
+
 
 	F4SE::GetMessagingInterface()->RegisterListener(MessageHandler);
 
